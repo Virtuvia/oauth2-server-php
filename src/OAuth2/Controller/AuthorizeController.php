@@ -2,12 +2,15 @@
 
 namespace OAuth2\Controller;
 
+use OAuth2\Model\AuthorizationRequest;
+use OAuth2\Model\AuthorizationRequestInterface;
 use OAuth2\Storage\ClientInterface;
 use OAuth2\ScopeInterface;
 use OAuth2\RequestInterface;
 use OAuth2\ResponseInterface;
 use OAuth2\Scope;
 use InvalidArgumentException;
+use OAuth2\ResponseType\ResponseTypeInterface;
 
 /**
  * @see AuthorizeControllerInterface
@@ -15,39 +18,12 @@ use InvalidArgumentException;
 class AuthorizeController implements AuthorizeControllerInterface
 {
     /**
-     * @var string
-     */
-    private $scope;
-
-    /**
-     * @var int
-     */
-    private $state;
-
-    /**
-     * @var mixed
-     */
-    private $client_id;
-
-    /**
-     * @var string
-     */
-    private $redirect_uri;
-
-    /**
-     * The response type
-     *
-     * @var string
-     */
-    private $response_type;
-
-    /**
      * @var ClientInterface
      */
     protected $clientStorage;
 
     /**
-     * @var array
+     * @var ResponseTypeInterface[]
      */
     protected $responseTypes;
 
@@ -98,45 +74,34 @@ class AuthorizeController implements AuthorizeControllerInterface
     /**
      * Handle the authorization request
      *
-     * @param RequestInterface  $request
+     * @param AuthorizationRequestInterface  $request
      * @param ResponseInterface $response
      * @param boolean           $is_authorized
      * @param mixed             $user_id
      * @return mixed|void
      * @throws InvalidArgumentException
      */
-    public function handleAuthorizeRequest(RequestInterface $request, ResponseInterface $response, $is_authorized, $user_id = null)
+    public function handleAuthorizeRequest(AuthorizationRequestInterface $request, ResponseInterface $response, $is_authorized, $user_id = null)
     {
         if (!is_bool($is_authorized)) {
             throw new InvalidArgumentException('Argument "is_authorized" must be a boolean.  This method must know if the user has granted access to the client.');
         }
 
-        // We repeat this, because we need to re-validate. The request could be POSTed
-        // by a 3rd-party (because we are not internally enforcing NONCEs, etc)
-        if (!$this->validateAuthorizeRequest($request, $response)) {
-            return;
-        }
-
         // If no redirect_uri is passed in the request, use client's registered one
-        if (empty($this->redirect_uri)) {
-            $clientData              = $this->clientStorage->getClientDetails($this->client_id);
+        if (empty($request->getRedirectUri())) {
+            $clientData              = $this->clientStorage->getClientDetails($request->getClientId());
             $registered_redirect_uri = $clientData['redirect_uri'];
         }
 
         // the user declined access to the client's application
         if ($is_authorized === false) {
-            $redirect_uri = $this->redirect_uri ?: $registered_redirect_uri;
+            $redirect_uri = $request->getRedirectUri() ?: $registered_redirect_uri;
             $this->setNotAuthorizedResponse($request, $response, $redirect_uri, $user_id);
 
             return;
         }
 
-        // build the parameters to set in the redirect URI
-        if (!$params = $this->buildAuthorizeParameters($request, $response, $user_id)) {
-            return;
-        }
-
-        $authResult = $this->responseTypes[$this->response_type]->getAuthorizeResponse($params, $user_id);
+        $authResult = $this->responseTypes[$request->getResponseType()]->getAuthorizeResponse($request, $user_id);
 
         list($redirect_uri, $uri_params) = $authResult;
 
@@ -153,41 +118,16 @@ class AuthorizeController implements AuthorizeControllerInterface
     /**
      * Set not authorized response
      *
-     * @param RequestInterface  $request
+     * @param AuthorizationRequestInterface  $request
      * @param ResponseInterface $response
      * @param string            $redirect_uri
      * @param mixed             $user_id
      */
-    protected function setNotAuthorizedResponse(RequestInterface $request, ResponseInterface $response, $redirect_uri, $user_id = null)
+    protected function setNotAuthorizedResponse(AuthorizationRequestInterface $request, ResponseInterface $response, $redirect_uri, $user_id = null)
     {
         $error = 'access_denied';
         $error_message = 'The user denied access to your application';
-        $response->setRedirect($this->config['redirect_status_code'], $redirect_uri, $this->state, $error, $error_message);
-    }
-
-    /**
-     * We have made this protected so this class can be extended to add/modify
-     * these parameters
-     *
-     * @TODO: add dependency injection for the parameters in this method
-     *
-     * @param RequestInterface $request
-     * @param ResponseInterface $response
-     * @param mixed $user_id
-     * @return array
-     */
-    protected function buildAuthorizeParameters($request, $response, $user_id)
-    {
-        // @TODO: we should be explicit with this in the future
-        $params = array(
-            'scope'         => $this->scope,
-            'state'         => $this->state,
-            'client_id'     => $this->client_id,
-            'redirect_uri'  => $this->redirect_uri,
-            'response_type' => $this->response_type,
-        );
-
-        return $params;
+        $response->setRedirect($this->config['redirect_status_code'], $redirect_uri, $request->getState(), $error, $error_message);
     }
 
     /**
@@ -195,7 +135,7 @@ class AuthorizeController implements AuthorizeControllerInterface
      *
      * @param RequestInterface $request
      * @param ResponseInterface $response
-     * @return bool
+     * @return AuthorizationRequestInterface|false
      */
     public function validateAuthorizeRequest(RequestInterface $request, ResponseInterface $response)
     {
@@ -333,15 +273,10 @@ class AuthorizeController implements AuthorizeControllerInterface
             return false;
         }
 
-        // save the input data and return true
-        $this->scope         = $requestedScope;
-        $this->state         = $state;
-        $this->client_id     = $client_id;
-        // Only save the SUPPLIED redirect URI (@see http://tools.ietf.org/html/rfc6749#section-4.1.3)
-        $this->redirect_uri  = $supplied_redirect_uri;
-        $this->response_type = $response_type;
-
-        return true;
+        return (new AuthorizationRequest($client_id, $response_type))
+            ->withState($state)
+            ->withScopes($requestedScope)
+            ->withRedirectUri($redirect_uri);
     }
 
     /**
@@ -426,55 +361,5 @@ class AuthorizeController implements AuthorizeControllerInterface
         }
 
         return false;
-    }
-
-    /**
-     * Convenience method to access the scope
-     *
-     * @return string
-     */
-    public function getScope()
-    {
-        return $this->scope;
-    }
-
-    /**
-     * Convenience method to access the state
-     *
-     * @return int
-     */
-    public function getState()
-    {
-        return $this->state;
-    }
-
-    /**
-     * Convenience method to access the client id
-     *
-     * @return mixed
-     */
-    public function getClientId()
-    {
-        return $this->client_id;
-    }
-
-    /**
-     * Convenience method to access the redirect url
-     *
-     * @return string
-     */
-    public function getRedirectUri()
-    {
-        return $this->redirect_uri;
-    }
-
-    /**
-     * Convenience method to access the response type
-     *
-     * @return string
-     */
-    public function getResponseType()
-    {
-        return $this->response_type;
     }
 }

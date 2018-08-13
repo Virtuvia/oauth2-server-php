@@ -3,6 +3,7 @@
 namespace OAuth2\ResponseType;
 
 use OAuth2\Storage\AuthorizationCodeInterface as AuthorizationCodeStorageInterface;
+use OAuth2\Model\AuthorizationRequestInterface;
 
 /**
  * @author Brent Shaffer <bshafs at gmail dot com>
@@ -21,20 +22,23 @@ class AuthorizationCode implements AuthorizationCodeInterface
         ), $config);
     }
 
-    public function getAuthorizeResponse($params, $user_id = null)
+    /**
+     * @param AuthorizationRequestInterface $request
+     * @param null $user_id
+     * @return array|mixed
+     */
+    public function getAuthorizeResponse(AuthorizationRequestInterface $request, $user_id = null)
     {
         // build the URL to redirect to
         $result = array('query' => array());
 
-        $params += array('scope' => null, 'state' => null);
+        $result['query']['code'] = $this->createAuthorizationCode($request->getClientId(), $user_id, $request->getRedirectUri(), $request->getScopes());
 
-        $result['query']['code'] = $this->createAuthorizationCode($params['client_id'], $user_id, $params['redirect_uri'], $params['scope']);
-
-        if (isset($params['state'])) {
-            $result['query']['state'] = $params['state'];
+        if (($state = $request->getState()) !== null) {
+            $result['query']['state'] = $state;
         }
 
-        return array($params['redirect_uri'], $result);
+        return array($request->getRedirectUri(), $result);
     }
 
     /**

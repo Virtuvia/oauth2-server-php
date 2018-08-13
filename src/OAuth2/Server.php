@@ -4,6 +4,7 @@ namespace OAuth2;
 
 use OAuth2\Controller\ResourceControllerInterface;
 use OAuth2\Controller\ResourceController;
+use OAuth2\Model\AuthorizationRequestInterface;
 use OAuth2\OpenID\Controller\UserInfoControllerInterface;
 use OAuth2\OpenID\Controller\UserInfoController;
 use OAuth2\OpenID\Controller\AuthorizeController as OpenIDAuthorizeController;
@@ -359,14 +360,7 @@ class Server implements ResourceControllerInterface,
      * authorization server should call this function to redirect the user
      * appropriately.
      *
-     * @param RequestInterface  $request - The request should have the follow parameters set in the querystring:
-     * - response_type: The requested response: an access token, an authorization code, or both.
-     * - client_id: The client identifier as described in Section 2.
-     * - redirect_uri: An absolute URI to which the authorization server will redirect the user-agent to when the
-     *   end-user authorization step is completed.
-     * - scope: (optional) The scope of the resource request expressed as a list of space-delimited strings.
-     * - state: (optional) An opaque value used by the client to maintain state between the request and callback.
-     *
+     * @param AuthorizationRequestInterface  $request obtained from validateAuthorizeRequest
      * @param ResponseInterface $response      - Response object
      * @param bool              $is_authorized - TRUE or FALSE depending on whether the user authorized the access.
      * @param mixed             $user_id       - Identifier of user who authorized the client
@@ -376,7 +370,7 @@ class Server implements ResourceControllerInterface,
      *
      * @ingroup oauth2_section_4
      */
-    public function handleAuthorizeRequest(RequestInterface $request, ResponseInterface $response, $is_authorized, $user_id = null)
+    public function handleAuthorizeRequest(AuthorizationRequestInterface $request, ResponseInterface $response, $is_authorized, $user_id = null)
     {
         $this->response = $response;
         $this->getAuthorizeController()->handleAuthorizeRequest($request, $this->response, $is_authorized, $user_id);
@@ -396,7 +390,7 @@ class Server implements ResourceControllerInterface,
      *
      * @param RequestInterface  $request  - Request object
      * @param ResponseInterface $response - Response object
-     * @return bool
+     * @return AuthorizationRequestInterface
      *
      * The authorization parameters so the authorization server can prompt
      * the user for approval if valid.

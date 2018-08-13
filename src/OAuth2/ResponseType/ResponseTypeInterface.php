@@ -2,12 +2,14 @@
 
 namespace OAuth2\ResponseType;
 
+use OAuth2\Model\AuthorizationRequestInterface;
+
 interface ResponseTypeInterface
 {
     /**
-     * @param array $params
+     * @param AuthorizationRequestInterface $request
      * @param mixed $user_id
      * @return mixed
      */
-    public function getAuthorizeResponse($params, $user_id = null);
+    public function getAuthorizeResponse(AuthorizationRequestInterface $request, $user_id = null);
 }

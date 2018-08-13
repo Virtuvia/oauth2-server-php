@@ -5,6 +5,7 @@ namespace OAuth2\ResponseType;
 use OAuth2\Storage\AccessTokenInterface as AccessTokenStorageInterface;
 use OAuth2\Storage\RefreshTokenInterface;
 use RuntimeException;
+use OAuth2\Model\AuthorizationRequestInterface;
 
 /**
  * @author Brent Shaffer <bshafs at gmail dot com>
@@ -53,16 +54,14 @@ class AccessToken implements AccessTokenInterface
     /**
      * Get authorize response
      *
-     * @param array $params
+     * @param AuthorizationRequestInterface $request
      * @param mixed $user_id
      * @return array
      */
-    public function getAuthorizeResponse($params, $user_id = null)
+    public function getAuthorizeResponse(AuthorizationRequestInterface $request, $user_id = null)
     {
         // build the URL to redirect to
         $result = array('query' => array());
-
-        $params += array('scope' => null, 'state' => null);
 
         /*
          * a refresh token MUST NOT be included in the fragment
@@ -70,13 +69,13 @@ class AccessToken implements AccessTokenInterface
          * @see http://tools.ietf.org/html/rfc6749#section-4.2.2
          */
         $includeRefreshToken = false;
-        $result["fragment"] = $this->createAccessToken($params['client_id'], $user_id, $params['scope'], $includeRefreshToken);
+        $result["fragment"] = $this->createAccessToken($request->getClientId(), $user_id, $request->getScopes(), $includeRefreshToken);
 
-        if (isset($params['state'])) {
-            $result["fragment"]["state"] = $params['state'];
+        if (($state = $request->getState()) !== null) {
+            $result["fragment"]["state"] = $state;
         }
 
-        return array($params['redirect_uri'], $result);
+        return array($request->getRedirectUri(), $result);
     }
 
     /**
@@ -173,13 +172,6 @@ class AccessToken implements AccessTokenInterface
             if ($this->refreshStorage && $revoked = $this->refreshStorage->unsetRefreshToken($token)) {
                 return true;
             }
-        }
-
-        /** @TODO remove in v2 */
-        if (!method_exists($this->tokenStorage, 'unsetAccessToken')) {
-            throw new RuntimeException(
-                sprintf('Token storage %s must implement unsetAccessToken method', get_class($this->tokenStorage)
-            ));
         }
 
         $revoked = $this->tokenStorage->unsetAccessToken($token);
