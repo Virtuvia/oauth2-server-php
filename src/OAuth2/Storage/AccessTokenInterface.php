@@ -20,7 +20,7 @@ interface AccessTokenInterface
      * @return array|null - An associative array as below, and return NULL if the supplied oauth_token is invalid:
      * @code
      *     array(
-     *         'expires'   => $expires,   // Stored expiration in unix timestamp.
+     *         'expires'   => $expires,   // Stored expiration as \DateTimeImmutable.
      *         'client_id' => $client_id, // (optional) Stored client identifier.
      *         'user_id'   => $user_id,   // (optional) Stored user identifier.
      *         'scope'     => $scope,     // (optional) Stored scope values in space-separated string.
@@ -40,12 +40,12 @@ interface AccessTokenInterface
      * @param string $oauth_token - oauth_token to be stored.
      * @param mixed  $client_id   - client identifier to be stored.
      * @param mixed  $user_id     - user identifier to be stored.
-     * @param int    $expires     - expiration to be stored as a Unix timestamp.
+     * @param \DateTimeImmutable   $expires     - expiration to be stored.
      * @param string $scope       - OPTIONAL Scopes to be stored in space-separated string.
      *
      * @ingroup oauth2_section_4
      */
-    public function setAccessToken($oauth_token, $client_id, $user_id, $expires, $scope = null);
+    public function setAccessToken($oauth_token, $client_id, $user_id, \DateTimeImmutable $expires, $scope = null);
 
     /**
      * Expire an access token.

@@ -6,6 +6,7 @@ use OAuth2\Storage\AccessTokenInterface as AccessTokenStorageInterface;
 use OAuth2\Storage\RefreshTokenInterface;
 use RuntimeException;
 use OAuth2\Model\AuthorizationRequestInterface;
+use OAuth2\ExpirationUtil;
 
 /**
  * @author Brent Shaffer <bshafs at gmail dot com>
@@ -99,7 +100,9 @@ class AccessToken implements AccessTokenInterface
             "scope" => $scope
         );
 
-        $this->tokenStorage->setAccessToken($token["access_token"], $client_id, $user_id, $this->config['access_lifetime'] ? time() + $this->config['access_lifetime'] : null, $scope);
+        $expires = ExpirationUtil::expiresAfterSeconds($this->config['access_lifetime']);
+
+        $this->tokenStorage->setAccessToken($token["access_token"], $client_id, $user_id, $expires, $scope);
 
         /*
          * Issue a refresh token also, if we support them
@@ -109,10 +112,12 @@ class AccessToken implements AccessTokenInterface
          */
         if ($includeRefreshToken && $this->refreshStorage) {
             $token["refresh_token"] = $this->generateRefreshToken();
-            $expires = 0;
+            $expires = null;
+
             if ($this->config['refresh_token_lifetime'] > 0) {
-                $expires = time() + $this->config['refresh_token_lifetime'];
+                $expires = ExpirationUtil::expiresAfterSeconds($this->config['refresh_token_lifetime']);
             }
+
             $this->refreshStorage->setRefreshToken($token['refresh_token'], $client_id, $user_id, $expires, $scope);
         }
 

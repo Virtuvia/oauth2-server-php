@@ -27,7 +27,7 @@ interface RefreshTokenInterface
      * - refresh_token: Refresh token identifier.
      * - client_id: Client identifier.
      * - user_id: User identifier.
-     * - expires: Expiration unix timestamp, or 0 if the token doesn't expire.
+     * - expires: Expiration as \DateTimeImmutable, or null if the token doesn't expire.
      * - scope: (optional) Scope values in space-separated string.
      *
      * @see http://tools.ietf.org/html/rfc6749#section-6
@@ -53,14 +53,14 @@ interface RefreshTokenInterface
      * Client identifier to be stored.
      * @param $user_id
      * User identifier to be stored.
-     * @param $expires
-     * Expiration timestamp to be stored. 0 if the token doesn't expire.
+     * @param |DateTimeImmutable|null $expires
+     * Expiration to be stored. null if the token doesn't expire.
      * @param $scope
      * (optional) Scopes to be stored in space-separated string.
      *
      * @ingroup oauth2_section_6
      */
-    public function setRefreshToken($refresh_token, $client_id, $user_id, $expires, $scope = null);
+    public function setRefreshToken($refresh_token, $client_id, $user_id, \DateTimeImmutable $expires = null, $scope = null);
 
     /**
      * Expire a used refresh token.

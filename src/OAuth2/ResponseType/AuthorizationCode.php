@@ -2,6 +2,7 @@
 
 namespace OAuth2\ResponseType;
 
+use OAuth2\ExpirationUtil;
 use OAuth2\Storage\AuthorizationCodeInterface as AuthorizationCodeStorageInterface;
 use OAuth2\Model\AuthorizationRequestInterface;
 
@@ -60,7 +61,10 @@ class AuthorizationCode implements AuthorizationCodeInterface
     public function createAuthorizationCode($client_id, $user_id, $redirect_uri, $scope = null)
     {
         $code = $this->generateAuthorizationCode();
-        $this->storage->setAuthorizationCode($code, $client_id, $user_id, $redirect_uri, time() + $this->config['auth_code_lifetime'], $scope);
+
+        $expires = ExpirationUtil::expiresAfterSeconds($this->config['auth_code_lifetime']);
+
+        $this->storage->setAuthorizationCode($code, $client_id, $user_id, $redirect_uri, $expires, $scope);
 
         return $code;
     }

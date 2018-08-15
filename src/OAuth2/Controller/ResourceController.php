@@ -2,6 +2,7 @@
 
 namespace OAuth2\Controller;
 
+use OAuth2\ExpirationUtil;
 use OAuth2\TokenType\TokenTypeInterface;
 use OAuth2\Storage\AccessTokenInterface;
 use OAuth2\ScopeInterface;
@@ -121,9 +122,9 @@ class ResourceController implements ResourceControllerInterface
             // Check token expiration (expires is a mandatory paramter)
             if (!$token = $this->tokenStorage->getAccessToken($token_param)) {
                 $response->setError(401, 'invalid_token', 'The access token provided is invalid');
-            } elseif (!isset($token["expires"]) || !isset($token["client_id"])) {
+            } elseif (!isset($token["expires"]) || !$token['expires'] instanceof \DateTimeImmutable || !isset($token["client_id"])) {
                 $response->setError(401, 'malformed_token', 'Malformed token (missing "expires")');
-            } elseif (time() > $token["expires"]) {
+            } elseif (ExpirationUtil::isExpired($token['expires'])) {
                 $response->setError(401, 'invalid_token', 'The access token provided has expired');
             } else {
                 return $token;

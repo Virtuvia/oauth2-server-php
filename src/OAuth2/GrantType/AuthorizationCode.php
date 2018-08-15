@@ -2,6 +2,7 @@
 
 namespace OAuth2\GrantType;
 
+use OAuth2\ExpirationUtil;
 use OAuth2\Storage\AuthorizationCodeInterface;
 use OAuth2\ResponseType\AccessTokenInterface;
 use OAuth2\RequestInterface;
@@ -74,11 +75,11 @@ class AuthorizationCode implements GrantTypeInterface
             }
         }
 
-        if (!isset($authCode['expires'])) {
+        if (!isset($authCode['expires']) || !$authCode['expires'] instanceof \DateTimeImmutable) {
             throw new \Exception('Storage must return authcode with a value for "expires"');
         }
 
-        if ($authCode["expires"] < time()) {
+        if (ExpirationUtil::isExpired($authCode['expires'])) {
             $response->setError(400, 'invalid_grant', "The authorization code has expired");
 
             return false;

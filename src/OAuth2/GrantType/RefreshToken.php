@@ -2,6 +2,7 @@
 
 namespace OAuth2\GrantType;
 
+use OAuth2\ExpirationUtil;
 use OAuth2\Storage\RefreshTokenInterface;
 use OAuth2\ResponseType\AccessTokenInterface;
 use OAuth2\RequestInterface;
@@ -83,7 +84,7 @@ class RefreshToken implements GrantTypeInterface
             return null;
         }
 
-        if ($refreshToken['expires'] > 0 && $refreshToken["expires"] < time()) {
+        if ($refreshToken['expires'] instanceof \DateTimeImmutable && ExpirationUtil::isExpired($refreshToken['expires'])) {
             $response->setError(400, 'invalid_grant', 'Refresh token has expired');
 
             return null;

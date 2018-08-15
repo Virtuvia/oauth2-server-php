@@ -4,6 +4,7 @@ namespace OAuth2\ResponseType;
 
 use OAuth2\Encryption\EncryptionInterface;
 use OAuth2\Encryption\Jwt;
+use OAuth2\ExpirationUtil;
 use OAuth2\Storage\AccessTokenInterface as AccessTokenStorageInterface;
 use OAuth2\Storage\RefreshTokenInterface;
 use OAuth2\Storage\PublicKeyInterface;
@@ -72,7 +73,10 @@ class JwtAccessToken extends AccessToken
          * if no secondary storage has been supplied
          */
         $token_to_store = $this->config['store_encrypted_token_string'] ? $access_token : $payload['id'];
-        $this->tokenStorage->setAccessToken($token_to_store, $client_id, $user_id, $this->config['access_lifetime'] ? time() + $this->config['access_lifetime'] : null, $scope);
+
+        $expires = ExpirationUtil::expiresAfterSeconds($this->config['access_lifetime']);
+
+        $this->tokenStorage->setAccessToken($token_to_store, $client_id, $user_id,  $expires, $scope);
 
         // token to return to the client
         $token = array(
@@ -90,9 +94,9 @@ class JwtAccessToken extends AccessToken
          */
         if ($includeRefreshToken && $this->refreshStorage) {
             $refresh_token = $this->generateRefreshToken();
-            $expires = 0;
+            $expires = null;
             if ($this->config['refresh_token_lifetime'] > 0) {
-                $expires = time() + $this->config['refresh_token_lifetime'];
+                $expires = ExpirationUtil::expiresAfterSeconds($this->config['refresh_token_lifetime']);
             }
             $this->refreshStorage->setRefreshToken($refresh_token, $client_id, $user_id, $expires, $scope);
             $token['refresh_token'] = $refresh_token;
