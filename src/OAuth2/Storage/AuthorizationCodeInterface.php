@@ -2,6 +2,8 @@
 
 namespace OAuth2\Storage;
 
+use OAuth2\Model\CodeChallengeInterface;
+
 /**
  * Implement this interface to specify where the OAuth2 Server
  * should get/save authorization codes for the "Authorization Code"
@@ -34,11 +36,12 @@ interface AuthorizationCodeInterface
      * An associative array as below, and NULL if the code is invalid
      * @code
      * return array(
-     *     "client_id"    => CLIENT_ID,      // REQUIRED Stored client identifier
-     *     "user_id"      => USER_ID,        // REQUIRED Stored user identifier
-     *     "expires"      => EXPIRES,        // REQUIRED Stored expiration as \DateTimeImmutable
-     *     "redirect_uri" => REDIRECT_URI,   // REQUIRED Stored redirect URI
-     *     "scope"        => SCOPE,          // OPTIONAL Stored scope values in space-separated string
+     *     "client_id"    => CLIENT_ID,               // REQUIRED Stored client identifier
+     *     "user_id"      => USER_ID,                 // REQUIRED Stored user identifier
+     *     "expires"      => EXPIRES,                 // REQUIRED Stored expiration as \DateTimeImmutable
+     *     "redirect_uri" => REDIRECT_URI,            // REQUIRED Stored redirect URI
+     *     "scope"        => SCOPE,                   // OPTIONAL Stored scope values in space-separated string
+     *     "code_challenge" => CodeChallengeInterface // OPTIONAL CodeChallenge provided in the Authorize request
      * );
      * @endcode
      *
@@ -69,6 +72,15 @@ interface AuthorizationCodeInterface
      * @ingroup oauth2_section_4
      */
     public function setAuthorizationCode($code, $client_id, $user_id, $redirect_uri, \DateTimeImmutable $expires, $scope = null);
+
+    /**
+     * Store the Code Challenge information to be verified when an Access Token is requested.
+     *
+     * @param string $code - Authorization code associated with this CodeChallenge
+     * @param CodeChallengeInterface $codeChallenge
+     * @throws \RuntimeException if Authorization Code is not already stored
+     */
+    public function setCodeChallenge($code, CodeChallengeInterface $codeChallenge);
 
     /**
      * once an Authorization Code is used, it must be expired

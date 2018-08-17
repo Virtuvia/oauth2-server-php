@@ -111,13 +111,13 @@ class AuthorizationRequest implements AuthorizationRequestInterface
     }
 
     /**
-     * @param array|null $scopes
+     * @param array|string|null $scopes
      * @return AuthorizationRequest
      */
-    public function withScopes(array $scopes = null)
+    public function withScopes($scopes = null)
     {
         $new = clone $this;
-        $new->scopes = $scopes ?: [];
+        $new->scopes = is_array($scopes) ?: (($scopes === null || $scopes === '') ? [] : explode(' ', $scopes));
 
         return $new;
     }

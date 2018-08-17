@@ -2,9 +2,9 @@
 
 namespace OAuth2\Model;
 
-class SHA256CodeChallenge implements CodeChallengeInterface
+class PlainCodeChallenge implements CodeChallengeInterface
 {
-    const CHALLENGE_METHOD = 'S256';
+    const CHALLENGE_METHOD = 'plain';
 
     /**
      * @var string
@@ -21,16 +21,7 @@ class SHA256CodeChallenge implements CodeChallengeInterface
 
     public function doesMatchVerifier($verifier)
     {
-        return hash_equals(
-            $this->challenge,
-            rtrim(
-                strtr(
-                    base64_encode(hash('sha256', $verifier, true)),
-                    '+/', '-_'
-                ),
-                '='
-            )
-        );
+        return \is_string($this->challenge) && \is_string($verifier) && \hash_equals($this->challenge, $verifier);
     }
 
     public function acceptVisitor(CodeChallengeVisitorInterface $visitor)

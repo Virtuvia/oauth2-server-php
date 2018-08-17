@@ -33,7 +33,13 @@ class AuthorizationCode implements AuthorizationCodeInterface
         // build the URL to redirect to
         $result = array('query' => array());
 
-        $result['query']['code'] = $this->createAuthorizationCode($request->getClientId(), $user_id, $request->getRedirectUri(), $request->getScopes());
+        $code = $this->createAuthorizationCode($request->getClientId(), $user_id, $request->getRedirectUri(), $request->getScopes());
+
+        $result['query']['code'] = $code;
+
+        if ($request->getCodeChallenge()) {
+            $this->storage->setCodeChallenge($code, $request->getCodeChallenge());
+        }
 
         if (($state = $request->getState()) !== null) {
             $result['query']['state'] = $state;

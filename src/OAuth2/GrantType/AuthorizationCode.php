@@ -3,11 +3,13 @@
 namespace OAuth2\GrantType;
 
 use OAuth2\ExpirationUtil;
+use OAuth2\Model\MissingCodeChallenge;
 use OAuth2\Storage\AuthorizationCodeInterface;
 use OAuth2\ResponseType\AccessTokenInterface;
 use OAuth2\RequestInterface;
 use OAuth2\ResponseInterface;
 use Exception;
+use OAuth2\Model\CodeChallengeInterface;
 
 /**
  * @author Brent Shaffer <bshafs at gmail dot com>
@@ -61,6 +63,23 @@ class AuthorizationCode implements GrantTypeInterface
             $response->setError(400, 'invalid_grant', 'Authorization code doesn\'t exist or is invalid for the client');
 
             return false;
+        }
+
+        $codeChallenge = (isset($authCode['code_challenge'])
+            && $authCode['code_challenge'] instanceof CodeChallengeInterface)
+            ? $authCode['code_challenge'] : null
+        ;
+
+        $codeVerifier = $request->request('code_verifier');
+
+        if ($codeChallenge || $codeVerifier) {
+            $codeChallenge = $codeChallenge ?: MissingCodeChallenge::getInstance();
+
+            if (!$codeChallenge->doesMatchVerifier($codeVerifier)) {
+                $response->setError(400, 'invalid_grant', 'Code Verifier does not match Code Challenge.');
+
+                return false;
+            }
         }
 
         /*

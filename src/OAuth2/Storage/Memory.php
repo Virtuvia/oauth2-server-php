@@ -2,6 +2,7 @@
 
 namespace OAuth2\Storage;
 
+use OAuth2\Model\CodeChallengeInterface;
 use OAuth2\OpenID\Storage\UserClaimsInterface;
 use OAuth2\OpenID\Storage\AuthorizationCodeInterface as OpenIDAuthorizationCodeInterface;
 
@@ -79,6 +80,15 @@ class Memory implements AuthorizationCodeInterface,
         $this->authorizationCodes[$code] = compact('code', 'client_id', 'user_id', 'redirect_uri', 'expires', 'scope', 'id_token');
 
         return true;
+    }
+
+    public function setCodeChallenge($code, CodeChallengeInterface $codeChallenge)
+    {
+        if (!isset($this->authorizationCodes[$code])) {
+            throw new \RuntimeException('Cannot store CodeChallenge, No Authorization Code stored');
+        }
+
+        $this->authorizationCodes[$code]['code_challenge'] = $codeChallenge;
     }
 
     public function setAuthorizationCodes($authorization_codes)

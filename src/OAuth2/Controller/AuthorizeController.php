@@ -4,6 +4,7 @@ namespace OAuth2\Controller;
 
 use OAuth2\Model\AuthorizationRequest;
 use OAuth2\Model\AuthorizationRequestInterface;
+use OAuth2\Model\CodeChallengeFactory;
 use OAuth2\Storage\ClientInterface;
 use OAuth2\ScopeInterface;
 use OAuth2\RequestInterface;
@@ -273,10 +274,39 @@ class AuthorizeController implements AuthorizeControllerInterface
             return false;
         }
 
-        return (new AuthorizationRequest($client_id, $response_type))
+        $authorizationRequest = (new AuthorizationRequest($client_id, $response_type))
             ->withState($state)
             ->withScopes($requestedScope)
-            ->withRedirectUri($redirect_uri);
+            ->withRedirectUri($redirect_uri)
+        ;
+
+        $codeChallengeString = $request->query('code_challenge', $request->request('code_challenge'));
+        $codeChallengeMethod = $request->query('code_challenge_method', $request->request('code_challenge_method'));
+
+        if ($codeChallengeString) {
+            // @TODO move validation in CodeChallengeFactory
+            if (preg_match('/^[A-Za-z0-9-._~]{43,128}$/', $codeChallengeString) !== 1) {
+                $response->setRedirect($this->config['redirect_status_code'], $redirect_uri, $state, 'invalid_request', 'Code Challenge does not conform to RFC7636 sec 4.2');
+
+                return false;
+            }
+
+            try {
+                $codeChallenge = (new CodeChallengeFactory())->createWith($codeChallengeMethod ?: CodeChallengeFactory::DEFAULT_CHALLENGE_METHOD, $codeChallengeString);
+
+                $authorizationRequest = $authorizationRequest->withCodeChallenge($codeChallenge);
+            } catch (\InvalidArgumentException $e) {
+                $response->setRedirect($this->config['redirect_status_code'], $redirect_uri, $state, 'invalid_request', 'Code Challenge does not conform to RFC7636 sec 4.2');
+
+                return false;
+            }
+        } elseif ($codeChallengeMethod) {
+            $response->setRedirect($this->config['redirect_status_code'], $redirect_uri, $state, 'invalid_request', 'Code Challenge Method specified, but no Code Challenge provided.');
+
+            return false;
+        }
+
+        return $authorizationRequest;
     }
 
     /**
